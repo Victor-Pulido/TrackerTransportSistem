@@ -1,0 +1,265 @@
+/* Sistema ITS — Design Tokens & Global Utilities — Dark Theme */
+
+:root {
+  /* ── Primarios ─────────────────────────────── */
+  --color-primary:        #1E4D8C;
+  --color-primary-dark:   #0F2D5E;
+  --color-primary-deeper: #06090F;
+  --color-primary-light:  #5B9BD5;
+
+  /* ── Acento ──────────────────────────────── */
+  --color-accent:         #E8A020;
+  --color-accent-light:   #F6C453;
+  --color-accent-dark:    #C88010;
+  --color-accent-bg:      rgba(232, 160, 32, 0.12);
+  --color-accent-glow:    rgba(232, 160, 32, 0.18);
+
+  /* ── Semáforo operacional ─────────────────── */
+  --color-success:        #34D399;
+  --color-success-bg:     rgba(52, 211, 153, 0.10);
+  --color-warning:        #FBBF24;
+  --color-warning-bg:     rgba(251, 191, 36, 0.10);
+  --color-danger:         #F87171;
+  --color-danger-bg:      rgba(248, 113, 113, 0.10);
+
+  /* ── Neutros ─────────────────────────────── */
+  --color-bg:             #06090F;
+  --color-surface:        #0D1827;
+  --color-surface-raised: #111F35;
+  --color-surface-hover:  #162438;
+  --color-border:         rgba(255, 255, 255, 0.07);
+  --color-border-subtle:  rgba(255, 255, 255, 0.04);
+  --color-border-strong:  rgba(255, 255, 255, 0.13);
+  --color-text-primary:   #E0EAFF;
+  --color-text-secondary: rgba(224, 234, 255, 0.48);
+  --color-text-muted:     rgba(224, 234, 255, 0.22);
+  --color-text-inverse:   #06090F;
+
+  /* ── Series de gráficos ──────────────────── */
+  --chart-1: #E8A020;
+  --chart-2: #60A5FA;
+  --chart-3: #34D399;
+  --chart-4: #A78BFA;
+  --chart-5: #F87171;
+
+  /* ── Sombras ─────────────────────────────── */
+  --shadow-card:  0 1px 4px rgba(0,0,0,0.50), 0 1px 2px rgba(0,0,0,0.40);
+  --shadow-panel: 0 8px 32px rgba(0,0,0,0.60), 0 2px 8px rgba(0,0,0,0.35);
+  --shadow-modal: 0 24px 64px rgba(0,0,0,0.80), 0 8px 24px rgba(0,0,0,0.50);
+  --shadow-glow:  0 0 24px rgba(232, 160, 32, 0.15);
+
+  /* ── Radio ───────────────────────────────── */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* ── Tipografía ──────────────────────────── */
+  --text-xs:   0.75rem;
+  --text-sm:   0.875rem;
+  --text-base: 1rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.25rem;
+  --text-2xl:  1.5rem;
+  --text-3xl:  1.875rem;
+}
+
+/* ── Reset mínimo ────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 16px;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100%;
+}
+
+/* ── Utilidades de formularios ───────────────── */
+.input-field {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  font-family: 'Geist', system-ui, sans-serif;
+  color: var(--color-text-primary);
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.10);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.input-field:focus {
+  border-color: rgba(232, 160, 32, 0.55);
+  box-shadow: 0 0 0 3px rgba(232, 160, 32, 0.08);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.input-field::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* ── Select field ────────────────────────────── */
+.select-field {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: 'Geist', system-ui, sans-serif;
+  color: var(--color-text-primary);
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.10);
+  border-radius: var(--radius-md);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.select-field:focus {
+  border-color: rgba(232, 160, 32, 0.55);
+}
+
+.select-field option {
+  background-color: #0D1827;
+  color: var(--color-text-primary);
+}
+
+/* ── Botón primario ──────────────────────────── */
+.btn-primary {
+  background: linear-gradient(135deg, #E8A020 0%, #C88010 100%);
+  color: #06090F;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: 'Geist', system-ui, sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow 150ms ease, transform 100ms ease, filter 150ms ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 20px rgba(232, 160, 32, 0.32), 0 1px 4px rgba(232, 160, 32, 0.20);
+  filter: brightness(1.07);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+/* ── Panel card ──────────────────────────────── */
+.panel-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+/* ── Ítem de navegación en sidebar ───────────── */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 2px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: 'Geist', system-ui, sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  border-left: 2.5px solid transparent;
+  transition: background-color 140ms ease, color 140ms ease;
+  color: rgba(224, 234, 255, 0.38);
+}
+
+.nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: rgba(224, 234, 255, 0.82);
+}
+
+.nav-item.active {
+  background: linear-gradient(90deg, rgba(232, 160, 32, 0.18) 0%, rgba(232, 160, 32, 0.04) 100%);
+  color: #F0D080;
+  border-left-color: #E8A020;
+  font-weight: 600;
+}
+
+/* ── Skeleton shimmer ────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Pulse animation para marcadores GPS ──────── */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+.pulse-marker::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: pulse-ring 1.5s ease-out infinite;
+  z-index: -1;
+}
+
+/* ── Leaflet overrides ───────────────────────── */
+.leaflet-container {
+  font-family: 'Geist', system-ui, sans-serif;
+  background-color: var(--color-bg) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-panel) !important;
+  border: 1px solid var(--color-border-strong) !important;
+  background-color: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--color-surface) !important;
+}
+
+/* ── Reduced motion ─────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  .pulse-marker::before { animation: none; }
+}
+
+/* ── Scrollbar ───────────────────────────────── */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
