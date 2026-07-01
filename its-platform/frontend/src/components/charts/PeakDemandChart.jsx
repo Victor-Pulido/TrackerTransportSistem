@@ -134,14 +134,15 @@ export function usePeakStats(data) {
 // ── Main chart ────────────────────────────────────────────────────────────
 export default function PeakDemandChart({ data = [], height = 260 }) {
   const { maxAvg, minAvg, xTicks } = useMemo(() => {
-    const avgs  = data.map((d) => d.moving_avg).filter((v) => v != null && !isNaN(v))
-    const hours = data.map((d) => parseInt(d.hour_of_day, 10))
-    const minH  = hours.length ? Math.min(...hours) : 0
-    const maxH  = hours.length ? Math.max(...hours) : 23
-    const ticks = []
-    const hourSet = new Set(hours)
+    const avgs    = data.map((d) => d.moving_avg).filter((v) => v != null && !isNaN(v))
+    const numSet  = new Set(data.map((d) => parseInt(d.hour_of_day, 10)))
+    const numArr  = [...numSet]
+    const minH    = numArr.length ? Math.min(...numArr) : 0
+    const maxH    = numArr.length ? Math.max(...numArr) : 23
+    // Ticks must be zero-padded strings matching hour_of_day format from strftime('%H')
+    const ticks   = []
     for (let h = minH; h <= maxH; h++) {
-      if (h % 2 === 0 && hourSet.has(h)) ticks.push(h)
+      if (h % 2 === 0 && numSet.has(h)) ticks.push(String(h).padStart(2, '0'))
     }
     return {
       maxAvg: avgs.length ? Math.max(...avgs) : null,
