@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS financial_records;
+DROP TABLE IF EXISTS infractions;
+DROP TABLE IF EXISTS service_contracts;
+DROP TABLE IF EXISTS vehicle_positions;
+DROP TABLE IF EXISTS passenger_events;
+DROP TABLE IF EXISTS trips;
+DROP TABLE IF EXISTS route_stops;
+DROP TABLE IF EXISTS stops;
+DROP TABLE IF EXISTS routes;
+DROP TABLE IF EXISTS vehicles;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS operators;
