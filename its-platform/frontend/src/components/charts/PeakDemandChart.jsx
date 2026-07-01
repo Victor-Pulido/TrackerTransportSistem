@@ -139,11 +139,12 @@ export default function PeakDemandChart({ data = [], height = 260 }) {
     const numArr  = [...numSet]
     const minH    = numArr.length ? Math.min(...numArr) : 0
     const maxH    = numArr.length ? Math.max(...numArr) : 23
-    // Ticks must be zero-padded strings matching hour_of_day format from strftime('%H')
-    const ticks   = []
-    for (let h = minH; h <= maxH; h++) {
-      if (h % 2 === 0 && numSet.has(h)) ticks.push(String(h).padStart(2, '0'))
-    }
+    // Show all hours when data is sparse (≤12 pts), else filter to even hours only.
+    // Ticks must be zero-padded strings matching hour_of_day from strftime('%H').
+    const allHours = [...numSet].sort((a, b) => a - b).map(h => String(h).padStart(2, '0'))
+    const ticks = numArr.length <= 12
+      ? allHours
+      : allHours.filter((_, i) => parseInt(allHours[i], 10) % 2 === 0)
     return {
       maxAvg: avgs.length ? Math.max(...avgs) : null,
       minAvg: avgs.length ? Math.min(...avgs) : null,
@@ -199,9 +200,9 @@ export default function PeakDemandChart({ data = [], height = 260 }) {
             barCategoryGap="12%"
             margin={{ top: 4, right: 4, left: -10, bottom: 0 }}
           >
-            {/* ── Background period bands ── */}
-            <ReferenceArea x1={6}  x2={9}  fill="rgba(217,164,65,0.045)"  ifOverflow="hidden" />
-            <ReferenceArea x1={17} x2={20} fill="rgba(208,106,106,0.045)" ifOverflow="hidden" />
+            {/* ── Background period bands (strings must match strftime('%H') output) ── */}
+            <ReferenceArea x1="06" x2="09" fill="rgba(217,164,65,0.045)"  ifOverflow="hidden" />
+            <ReferenceArea x1="17" x2="20" fill="rgba(208,106,106,0.045)" ifOverflow="hidden" />
 
             {/* ── Grid ── */}
             <CartesianGrid

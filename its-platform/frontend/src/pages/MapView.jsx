@@ -27,41 +27,72 @@ const fetchRoutes = async () => {
   return res.data?.routes ?? res.data ?? []
 }
 
-// Route polylines matching SP stops defined in seeder
+// Route polylines — coordinates match seeder stops (SPTrans nomenclature)
 const ROUTE_POLYLINES = {
-  'T1-A': [
-    [-23.4733, -46.6095],  // Terminal Tucuruvi
+  // 407E-10: Expresso Sapopemba → Praça da Sé (east express, 25 km)
+  '407E-10': [
+    [-23.6086, -46.4834],  // Terminal Sapopemba
+    [-23.5363, -46.5763],  // Tatuapé
+    [-23.5457, -46.6060],  // Bresser
+    [-23.5457, -46.6172],  // Brás
+    [-23.5506, -46.6333],  // Praça da Sé
+  ],
+  // 407A-10: Local Sapopemba → Praça da Sé (east local, 27 km)
+  '407A-10': [
+    [-23.6086, -46.4834],  // Terminal Sapopemba
+    [-23.5598, -46.5284],  // Aricanduva
+    [-23.5327, -46.5499],  // Vila Matilde
+    [-23.5175, -46.5501],  // Penha
+    [-23.5457, -46.6172],  // Brás
+    [-23.5428, -46.6327],  // Mercado Municipal
+    [-23.5506, -46.6333],  // Praça da Sé
+  ],
+  // 3021-10: Jardim Peri → Praça da Sé (north corridor, 20 km)
+  '3021-10': [
+    [-23.4420, -46.6380],  // Terminal Jardim Peri
     [-23.5014, -46.6286],  // Santana
     [-23.5163, -46.6327],  // Carandiru
     [-23.5292, -46.6371],  // Tietê
     [-23.5344, -46.6364],  // Luz
-    [-23.5437, -46.6407],  // República
-    [-23.5450, -46.6437],  // Anhangabaú
     [-23.5506, -46.6333],  // Praça da Sé
   ],
-  'T1-B': [
+  // 5110-10: Santo André → Largo São Bento (ABC main axis, 30 km)
+  '5110-10': [
     [-23.6680, -46.5346],  // Terminal Santo André
+    [-23.6398, -46.5552],  // Rudge Ramos (SBC)
+    [-23.6198, -46.5633],  // São Caetano do Sul
     [-23.5888, -46.6059],  // Ipiranga
-    [-23.5951, -46.6218],  // Saúde
     [-23.5583, -46.6340],  // Liberdade
-    [-23.5506, -46.6333],  // Praça da Sé
+    [-23.5393, -46.6331],  // Largo São Bento
   ],
-  'T2-A': [
-    [-23.5226, -46.7034],  // Terminal Lapa
-    [-23.5310, -46.6848],  // Pompéia
-    [-23.5369, -46.6717],  // Perdizes
-    [-23.5450, -46.6600],  // Higienópolis
+  // 5110-21: Santo André → Largo São Bento via Av. do Estado (variant, 28 km)
+  '5110-21': [
+    [-23.6680, -46.5346],  // Terminal Santo André
+    [-23.6385, -46.5481],  // Fundação ABC
+    [-23.5504, -46.5885],  // Mooca
+    [-23.5457, -46.6060],  // Bresser
+    [-23.5457, -46.6172],  // Brás
+    [-23.5393, -46.6331],  // Largo São Bento
+  ],
+  // 4310-10: Terminal Santo Amaro → Praça da República via Av. Paulista (24 km)
+  '4310-10': [
+    [-23.6546, -46.7045],  // Terminal Santo Amaro
+    [-23.6119, -46.6748],  // Campo Belo
+    [-23.5873, -46.6587],  // Ibirapuera
+    [-23.5619, -46.6560],  // MASP / Av. Paulista
     [-23.5536, -46.6569],  // Consolação
-    [-23.5437, -46.6407],  // República
-    [-23.5458, -46.6172],  // Brás
-    [-23.5363, -46.5763],  // Terminal Tatuapé
+    [-23.5437, -46.6407],  // Praça da República
   ],
 }
 
+// Colors: SPMove Norte routes → amber/orange tones; SPMove Sul → blue/teal/purple
 const ROUTE_COLORS = {
-  'T1-A': '#E8A020',
-  'T1-B': '#60A5FA',
-  'T2-A': '#34D399',
+  '407E-10': '#E8A020', // amber  — main east express
+  '407A-10': '#F97316', // orange — east local
+  '3021-10': '#34D399', // green  — north corridor
+  '5110-10': '#60A5FA', // blue   — ABC main axis (busiest)
+  '5110-21': '#38BDF8', // sky    — ABC variant
+  '4310-10': '#A78BFA', // purple — south/Paulista
 }
 
 function BusMarker({ position, vehicleCode, speed, timestamp }) {

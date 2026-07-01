@@ -16,12 +16,11 @@ type LoadProfileRow struct {
 	PaxOnBoard int    `json:"pax_on_board"`
 }
 
-// PeakDemandRow represents aggregated boarding demand for a given hour and day-of-week.
+// PeakDemandRow represents total boarding demand aggregated per hour across the query range.
 type PeakDemandRow struct {
-	HourOfDay     string  `json:"hour_of_day"`
-	DayOfWeek     string  `json:"day_of_week"`
-	TotalBoardings int    `json:"total_boardings"`
-	MovingAvg     float64 `json:"moving_avg"`
+	HourOfDay      string  `json:"hour_of_day"`
+	TotalBoardings int     `json:"total_boardings"`
+	MovingAvg      float64 `json:"moving_avg"`
 }
 
 // EfficiencyRow holds per-route operational efficiency metrics.
@@ -87,13 +86,13 @@ func LoadProfile(db *sql.DB, tripID string) ([]LoadProfileRow, error) {
 	return result, rows.Err()
 }
 
-// PeakDemand returns hourly demand aggregated by day-of-week with a moving average.
+// PeakDemand returns total boardings per hour (summed across all days in the range)
+// with a 2-hour smoothed moving average.
 func PeakDemand(db *sql.DB, operatorID, from, to string) ([]PeakDemandRow, error) {
 	query := `
 		SELECT
-			strftime('%H', timestamp)       AS hour_of_day,
-			strftime('%w', timestamp)       AS day_of_week,
-			SUM(boardings)                  AS total_boardings,
+			strftime('%H', timestamp)  AS hour_of_day,
+			SUM(boardings)             AS total_boardings,
 			AVG(SUM(boardings)) OVER (
 				ORDER BY strftime('%H', timestamp)
 				ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING
@@ -116,7 +115,7 @@ func PeakDemand(db *sql.DB, operatorID, from, to string) ([]PeakDemandRow, error
 	}
 
 	query += `
-		GROUP BY strftime('%H', timestamp), strftime('%w', timestamp)
+		GROUP BY strftime('%H', timestamp)
 		ORDER BY hour_of_day`
 
 	rows, err := db.Query(query, args...)
@@ -128,7 +127,7 @@ func PeakDemand(db *sql.DB, operatorID, from, to string) ([]PeakDemandRow, error
 	var result []PeakDemandRow
 	for rows.Next() {
 		var r PeakDemandRow
-		if err := rows.Scan(&r.HourOfDay, &r.DayOfWeek, &r.TotalBoardings, &r.MovingAvg); err != nil {
+		if err := rows.Scan(&r.HourOfDay, &r.TotalBoardings, &r.MovingAvg); err != nil {
 			return nil, err
 		}
 		result = append(result, r)

@@ -44,6 +44,12 @@ func main() {
 		}
 	} else {
 		log.Println("[main] database already seeded, skipping")
+		// Refresh time-series data if it has aged out of the dashboard query windows.
+		if seeder.NeedsTimeSeriesRefresh(db) {
+			if err := seeder.RefreshTimeSeries(db); err != nil {
+				log.Printf("[main] time-series refresh failed (non-fatal): %v", err)
+			}
+		}
 	}
 
 	// ── 3. WebSocket hub ───────────────────────────────────────────────────────
