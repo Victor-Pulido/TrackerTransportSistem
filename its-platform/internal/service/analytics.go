@@ -35,3 +35,8 @@ func (s *AnalyticsService) GetEfficiency(operatorID string) ([]repository.Effici
 func (s *AnalyticsService) GetOccupancyRate(operatorID string) ([]repository.OccupancyRow, error) {
 	return repository.OccupancyRate(s.DB, operatorID)
 }
+
+// GetDashboardSummary returns all KPI values for the dashboard overview.
+func (s *AnalyticsService) GetDashboardSummary(operatorID string) (repository.DashboardSummaryRow, error) {
+	return repository.DashboardSummary(s.DB, operatorID)
+}

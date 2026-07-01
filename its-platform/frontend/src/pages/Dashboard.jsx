@@ -41,9 +41,9 @@ const HR = () => (
 function Panel({ children, style }) {
   return (
     <div style={{
-      backgroundColor: 'rgba(255,255,255,0.025)',
-      border:          '1px solid rgba(255,255,255,0.07)',
-      borderRadius:    8,
+      backgroundColor: 'rgba(255,255,255,0.02)',
+      border:          '1px solid rgba(255,255,255,0.06)',
+      borderRadius:    18,
       overflow:        'hidden',
       ...style,
     }}>
@@ -195,10 +195,11 @@ function TripsSkeleton() {
 
 // ── Main page ─────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { data: summary, isLoading: loadingSummary } = useQuery({
+  const { data: summary, isLoading: loadingSummary, isError: summaryError } = useQuery({
     queryKey:        ['dashboard-summary'],
     queryFn:         fetchDashboard,
     refetchInterval: 30_000,
+    retry:           2,
   })
 
   const { data: peakData = [], isLoading: loadingPeak } = useQuery({
@@ -226,7 +227,7 @@ export default function Dashboard() {
   })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* ── Page header ──────────────────────────────────────────────── */}
       <div style={{
@@ -283,12 +284,13 @@ export default function Dashboard() {
       </div>
 
       {/* ── Hero row: primary KPI + alert ────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Primary KPI — Passengers Today */}
         <div className="lg:col-span-2">
           <KpiCard
             title="Passengers Today"
             value={loadingSummary ? undefined : s.passengers_today}
+            error={summaryError && !loadingSummary}
             icon={Users}
             format="number"
             delta={s.passengers_delta}
@@ -301,6 +303,7 @@ export default function Dashboard() {
         <KpiCard
           title="Active Infractions"
           value={loadingSummary ? undefined : s.active_infractions}
+          error={summaryError && !loadingSummary}
           icon={AlertTriangle}
           format="number"
           delta={s.infractions_delta}
@@ -311,10 +314,11 @@ export default function Dashboard() {
       </div>
 
       {/* ── Secondary metrics 4-up ───────────────────────────────────── */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
           title="Daily Revenue"
           value={loadingSummary ? undefined : s.revenue_today}
+          error={summaryError && !loadingSummary}
           icon={DollarSign}
           format="currency"
           delta={s.revenue_delta}
@@ -323,6 +327,7 @@ export default function Dashboard() {
         <KpiCard
           title="Km Operated"
           value={loadingSummary ? undefined : s.km_today}
+          error={summaryError && !loadingSummary}
           unit="km"
           icon={Route}
           format="number"
@@ -332,6 +337,7 @@ export default function Dashboard() {
         <KpiCard
           title="Trips Completed"
           value={loadingSummary ? undefined : s.trips_completed}
+          error={summaryError && !loadingSummary}
           icon={CheckCircle}
           format="number"
           delta={s.trips_delta}
@@ -340,6 +346,7 @@ export default function Dashboard() {
         <KpiCard
           title="Occupancy Rate"
           value={loadingSummary ? undefined : s.avg_occupancy}
+          error={summaryError && !loadingSummary}
           icon={Activity}
           format="percent"
           delta={s.occupancy_delta}
@@ -348,15 +355,15 @@ export default function Dashboard() {
       </div>
 
       {/* ── Analytics row ───────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
         {/* Hourly demand chart — 2/3 */}
         <div className="xl:col-span-2">
           <div style={{
-            backgroundColor: '#0B0F1A',
-            border:          '1px solid rgba(255,255,255,0.07)',
-            borderRadius:    12,
-            padding:         '20px 22px 22px',
+            backgroundColor: 'rgba(255,255,255,0.02)',
+            border:          '1px solid rgba(255,255,255,0.06)',
+            borderRadius:    18,
+            padding:         '22px 24px 24px',
           }}>
             {/* Card header */}
             <div style={{
@@ -376,7 +383,7 @@ export default function Dashboard() {
                   letterSpacing: '-0.02em',
                   lineHeight:    1.2,
                 }}>
-                  Hourly Demand
+                  Demand by 15-min Slot
                 </h2>
                 <p style={{
                   margin:     '4px 0 0',
@@ -384,7 +391,7 @@ export default function Dashboard() {
                   color:      'rgba(224,234,255,0.38)',
                   fontFamily: 'Geist, sans-serif',
                 }}>
-                  Last 7 days · total boardings by hour
+                  Last 7 days · total boardings per 15-min interval
                 </p>
               </div>
 
@@ -398,9 +405,9 @@ export default function Dashboard() {
                 }}>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 10, color: 'rgba(224,234,255,0.32)', fontFamily: 'Geist, sans-serif', marginBottom: 2, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                      Peak Hour
+                      Peak Slot
                     </div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#D9A441', fontFamily: 'Geist Mono, monospace' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#22D3EE', fontFamily: 'Geist Mono, monospace' }}>
                       {peakStats.peakLabel}
                     </div>
                     <div style={{ fontSize: 11, color: 'rgba(224,234,255,0.40)', fontFamily: 'Geist Mono, monospace' }}>
@@ -410,7 +417,7 @@ export default function Dashboard() {
                   <div style={{ width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.07)', marginTop: 2 }} />
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 10, color: 'rgba(224,234,255,0.32)', fontFamily: 'Geist, sans-serif', marginBottom: 2, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                      Avg / Hour
+                      Avg / Slot
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(224,234,255,0.75)', fontFamily: 'Geist Mono, monospace' }}>
                       {peakStats.avg?.toLocaleString('pt-BR')}

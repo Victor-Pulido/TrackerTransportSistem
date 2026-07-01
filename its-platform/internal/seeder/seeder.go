@@ -43,17 +43,17 @@ type tsRoute struct {
 func routeDemandBase(code string) int {
 	switch code {
 	case "5110-10":
-		return 38 // Main ABC→Capital corridor — highest ridership in the network
+		return 190 // Main ABC→Capital corridor — highest ridership in the network
 	case "407E-10":
-		return 32 // East zone express — concentrated, high-demand stops
+		return 160 // East zone express — concentrated, high-demand stops
 	case "3021-10":
-		return 28 // North corridor — dense residential catchment
+		return 140 // North corridor — dense residential catchment
 	case "5110-21":
-		return 24 // ABC variant — parallel to main route, distributed load
+		return 120 // ABC variant — parallel to main route, distributed load
 	case "407A-10":
-		return 22 // East zone local — many stops, lower per-stop demand
+		return 110 // East zone local — many stops, lower per-stop demand
 	default:
-		return 20
+		return 100
 	}
 }
 
@@ -61,8 +61,16 @@ func routeDemandBase(code string) int {
 // Public interface
 // ─────────────────────────────────────────────────────────────────────────────
 
-// NeedsSeeding returns true when the DB is empty or still contains old demo
-// routes (Tx-A style) instead of the official SPTrans route nomenclature.
+// Deterministic operator UUIDs — fixed across all seeds so JWT tokens remain
+// valid after a reseed (operator_id in the token always matches the DB).
+const (
+	fixedOp1ID  = "10000001-0000-4000-8000-000000000001" // SPMove Norte
+	fixedOp2ID  = "10000002-0000-4000-8000-000000000002" // SPMove Sul
+	fixedFiscID = "10000003-0000-4000-8000-000000000003" // CMSP Control
+)
+
+// NeedsSeeding returns true when the DB is empty, has old demo routes, uses
+// random operator UUIDs, or still has hourly (non-15-min) trip granularity.
 func NeedsSeeding(db *sql.DB) bool {
 	var ops int
 	if err := db.QueryRow("SELECT COUNT(*) FROM operators").Scan(&ops); err != nil || ops == 0 {
@@ -74,7 +82,19 @@ func NeedsSeeding(db *sql.DB) bool {
 		SELECT COUNT(*) FROM routes
 		WHERE code LIKE '40%' OR code LIKE '51%'
 		   OR code LIKE '30%' OR code LIKE '43%'`).Scan(&spRoutes)
-	return spRoutes == 0
+	if spRoutes == 0 {
+		return true
+	}
+	// Re-seed when operators have random UUIDs (pre-deterministic seed).
+	var stableOp int
+	db.QueryRow(`SELECT COUNT(*) FROM operators WHERE id = ?`, fixedOp1ID).Scan(&stableOp)
+	if stableOp == 0 {
+		return true
+	}
+	// Re-seed when all trips start on the hour (hourly granularity → upgrade to 15-min).
+	var nonZeroMinTrips int
+	db.QueryRow(`SELECT COUNT(*) FROM trips WHERE CAST(strftime('%M', scheduled_start) AS INTEGER) != 0`).Scan(&nonZeroMinTrips)
+	return nonZeroMinTrips == 0
 }
 
 // NeedsTimeSeriesRefresh returns true when passenger_events has no rows in
@@ -106,9 +126,9 @@ func Seed(db *sql.DB) error {
 	}()
 
 	// ── 1. Operators ──────────────────────────────────────────────────────────
-	op1ID  := uuid.NewString() // SPMove Norte — north/east corridors
-	op2ID  := uuid.NewString() // SPMove Sul   — south/ABC corridors
-	fiscID := uuid.NewString() // CMSP Control — regulatory only
+	op1ID  := fixedOp1ID  // SPMove Norte — north/east corridors
+	op2ID  := fixedOp2ID  // SPMove Sul   — south/ABC corridors
+	fiscID := fixedFiscID // CMSP Control — regulatory only
 
 	type opDef struct{ id, name, code, cnpj string }
 	for _, op := range []opDef{
@@ -301,7 +321,7 @@ func Seed(db *sql.DB) error {
 		if _, err = tx.Exec(
 			`INSERT OR IGNORE INTO service_contracts
 			 (id, operator_id, route_id, min_frequency, min_daily_trips, valid_from, valid_until)
-			 VALUES (?, ?, ?, 30, 17, ?, ?)`,
+			 VALUES (?, ?, ?, 15, 68, ?, ?)`,
 			uuid.NewString(), r.opID, r.id, validFrom, validUntil,
 		); err != nil {
 			return fmt.Errorf("insert contract %s: %w", r.code, err)
@@ -316,7 +336,7 @@ func Seed(db *sql.DB) error {
 		if _, err = tx.Exec(
 			`INSERT OR IGNORE INTO vehicles
 			 (id, operator_id, license_plate, internal_code, capacity, model, year, active)
-			 VALUES (?, ?, ?, ?, 80, ?, 2022, 1)`,
+			 VALUES (?, ?, ?, ?, 400, ?, 2022, 1)`,
 			op1Vehicles[i], op1ID,
 			fmt.Sprintf("SPN%d%c%03d", 1+i%9, rune('A'+i%26), i+100),
 			fmt.Sprintf("SPN-%03d", i+1),
@@ -333,7 +353,7 @@ func Seed(db *sql.DB) error {
 		if _, err = tx.Exec(
 			`INSERT OR IGNORE INTO vehicles
 			 (id, operator_id, license_plate, internal_code, capacity, model, year, active)
-			 VALUES (?, ?, ?, ?, 80, ?, 2021, 1)`,
+			 VALUES (?, ?, ?, ?, 400, ?, 2021, 1)`,
 			op2Vehicles[i], op2ID,
 			fmt.Sprintf("SPS%d%c%03d", 2+i%9, rune('B'+i%26), i+200),
 			fmt.Sprintf("SPS-%03d", i+1),
@@ -558,93 +578,117 @@ func seedTSCore(
 			}
 			vehicleIdx := 0
 
+			// 15-minute headway: 4 departures per hour (SPTrans aforo standard).
 			for _, hour := range opHours {
-				hf  := opHourFactor[hour]
-				vID := vehicles[vehicleIdx%len(vehicles)]
-				vehicleIdx++
+				hf := opHourFactor[hour]
 
-				tripID := uuid.NewString()
-				endH   := hour + 1
-				if endH > 23 {
-					endH = 23
-				}
-				if _, err := tx.Exec(
-					`INSERT INTO trips
-					 (id, vehicle_id, route_id, operator_id,
-					  scheduled_start, actual_start, actual_end, status)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, 'COMPLETED')`,
-					tripID, vID, r.id, r.opID,
-					fmt.Sprintf("%sT%02d:00:00Z", dateStr, hour),
-					fmt.Sprintf("%sT%02d:02:00Z", dateStr, hour),
-					fmt.Sprintf("%sT%02d:45:00Z", dateStr, endH),
-				); err != nil {
-					return fmt.Errorf("insert trip %s h%02d: %w", r.code, hour, err)
-				}
+				for _, min15 := range []int{0, 15, 30, 45} {
+					vID := vehicles[vehicleIdx%len(vehicles)]
+					vehicleIdx++
 
-				paxOnBoard     := 0
-				totalBoardings := 0
-
-				for seq, stopID := range r.stopIDs {
-					// Per-stop demand: base × hour factor × day factor × ±20% variance.
-					variance := 0.80 + rng.Float64()*0.40
-					demand   := int(float64(r.demandBase+rng.Intn(12)) * hf * dayFactor * variance)
-					if demand < 0 {
-						demand = 0
+					tripID := uuid.NewString()
+					// Trip duration ~40 min (typical SPTrans urban express).
+					endMin := min15 + 40
+					endH   := hour
+					if endMin >= 60 {
+						endH++
+						endMin -= 60
 					}
-					boardings := demand
-
-					// Alightings increase toward end of route (progressive unloading).
-					alightings := 0
-					if seq > 0 {
-						rate       := 0.12 + float64(seq)/float64(len(r.stopIDs))*0.65
-						alightings  = int(float64(paxOnBoard) * rate)
+					if endH > 23 {
+						endH = 23
+						endMin = 59
 					}
-					// Last stop: everyone alights, no new boardings.
-					if seq == len(r.stopIDs)-1 {
-						alightings = paxOnBoard
-						boardings  = 0
-					}
-					if alightings > paxOnBoard {
-						alightings = paxOnBoard
-					}
-
-					paxOnBoard = paxOnBoard - alightings + boardings
-					// Hard capacity cap at 80 seats.
-					if paxOnBoard > 80 {
-						excess    := paxOnBoard - 80
-						boardings -= excess
-						if boardings < 0 {
-							boardings = 0
-						}
-						paxOnBoard = 80
-					}
-					if paxOnBoard < 0 {
-						paxOnBoard = 0
-					}
-					totalBoardings += boardings
-
 					if _, err := tx.Exec(
-						`INSERT INTO passenger_events
-						 (id, trip_id, stop_id, route_id, operator_id,
-						  sequence, boardings, alightings, timestamp)
-						 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-						uuid.NewString(), tripID, stopID, r.id, r.opID,
-						seq+1, boardings, alightings,
-						fmt.Sprintf("%sT%02d:%02d:00Z", dateStr, hour, (seq*5)%60),
+						`INSERT INTO trips
+						 (id, vehicle_id, route_id, operator_id,
+						  scheduled_start, actual_start, actual_end, status)
+						 VALUES (?, ?, ?, ?, ?, ?, ?, 'COMPLETED')`,
+						tripID, vID, r.id, r.opID,
+						fmt.Sprintf("%sT%02d:%02d:00Z", dateStr, hour, min15),
+						fmt.Sprintf("%sT%02d:%02d:02Z", dateStr, hour, min15),
+						fmt.Sprintf("%sT%02d:%02d:00Z", dateStr, endH, endMin),
 					); err != nil {
-						return fmt.Errorf("insert event %s h%02d seq%d: %w", r.code, hour, seq+1, err)
+						return fmt.Errorf("insert trip %s h%02d m%02d: %w", r.code, hour, min15, err)
 					}
-				}
 
-				// BRL 4.40 fare (SPTrans 2026 base tariff).
-				if _, err := tx.Exec(
-					`INSERT INTO financial_records
-					 (id, operator_id, trip_id, record_date, revenue, km_operated, trips_completed, record_type)
-					 VALUES (?, ?, ?, ?, ?, ?, 1, 'DAILY_REVENUE')`,
-					uuid.NewString(), r.opID, tripID, dateStr,
-					float64(totalBoardings)*4.40, r.kmPerTrip,
-				); err != nil {
-					return fmt.Errorf("insert financial %s: %w", r.code, err)
+					paxOnBoard     := 0
+					totalBoardings := 0
+
+					for seq, stopID := range r.stopIDs {
+						// Spread stops evenly across the 40-minute trip window.
+						stopOffset := 0
+						if len(r.stopIDs) > 1 {
+							stopOffset = seq * 40 / (len(r.stopIDs) - 1)
+						}
+						stopMin  := min15 + stopOffset
+						stopHour := hour
+						for stopMin >= 60 {
+							stopHour++
+							stopMin -= 60
+						}
+						if stopHour > 23 {
+							stopHour = 23
+							stopMin  = 59
+						}
+
+						// Scale demand by 0.25 — 4 trips/hour keeps hourly totals stable.
+						variance := 0.80 + rng.Float64()*0.40
+						demand   := int(float64(r.demandBase+rng.Intn(12)) * hf * dayFactor * variance * 0.25)
+						if demand < 0 {
+							demand = 0
+						}
+						boardings := demand
+
+						alightings := 0
+						if seq > 0 {
+							rate       := 0.12 + float64(seq)/float64(len(r.stopIDs))*0.65
+							alightings  = int(float64(paxOnBoard) * rate)
+						}
+						if seq == len(r.stopIDs)-1 {
+							alightings = paxOnBoard
+							boardings  = 0
+						}
+						if alightings > paxOnBoard {
+							alightings = paxOnBoard
+						}
+
+						paxOnBoard = paxOnBoard - alightings + boardings
+						if paxOnBoard > 400 {
+							excess    := paxOnBoard - 400
+							boardings -= excess
+							if boardings < 0 {
+								boardings = 0
+							}
+							paxOnBoard = 400
+						}
+						if paxOnBoard < 0 {
+							paxOnBoard = 0
+						}
+						totalBoardings += boardings
+
+						if _, err := tx.Exec(
+							`INSERT INTO passenger_events
+							 (id, trip_id, stop_id, route_id, operator_id,
+							  sequence, boardings, alightings, timestamp)
+							 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+							uuid.NewString(), tripID, stopID, r.id, r.opID,
+							seq+1, boardings, alightings,
+							fmt.Sprintf("%sT%02d:%02d:00Z", dateStr, stopHour, stopMin),
+						); err != nil {
+							return fmt.Errorf("insert event %s h%02d m%02d seq%d: %w", r.code, hour, min15, seq+1, err)
+						}
+					}
+
+					// BRL 4.40 fare (SPTrans 2026 base tariff).
+					if _, err := tx.Exec(
+						`INSERT INTO financial_records
+						 (id, operator_id, trip_id, record_date, revenue, km_operated, trips_completed, record_type)
+						 VALUES (?, ?, ?, ?, ?, ?, 1, 'DAILY_REVENUE')`,
+						uuid.NewString(), r.opID, tripID, dateStr,
+						float64(totalBoardings)*4.40, r.kmPerTrip,
+					); err != nil {
+						return fmt.Errorf("insert financial %s h%02d m%02d: %w", r.code, hour, min15, err)
+					}
 				}
 			}
 		}

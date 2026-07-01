@@ -79,6 +79,8 @@ type Trip struct {
 	ActualStart    string `json:"actual_start"`
 	ActualEnd      string `json:"actual_end"`
 	Status         string `json:"status"`
+	RouteCode      string `json:"route_code,omitempty"`
+	VehicleCode    string `json:"vehicle_code,omitempty"`
 }
 
 // PassengerEvent records boardings and alightings at a specific stop during a trip.

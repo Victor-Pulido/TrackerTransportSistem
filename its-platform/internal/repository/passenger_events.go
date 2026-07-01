@@ -86,15 +86,17 @@ func LoadProfile(db *sql.DB, tripID string) ([]LoadProfileRow, error) {
 	return result, rows.Err()
 }
 
-// PeakDemand returns total boardings per hour (summed across all days in the range)
-// with a 2-hour smoothed moving average.
+// PeakDemand returns total boardings aggregated per 15-minute slot (summed across
+// all days in the range) with a smoothed moving average. The hour_of_day field
+// uses "HH:MM" format (e.g. "08:15") — the standard aforo de tránsito interval.
 func PeakDemand(db *sql.DB, operatorID, from, to string) ([]PeakDemandRow, error) {
+	slot := `strftime('%H', timestamp) || ':' || printf('%02d', (CAST(strftime('%M', timestamp) AS INTEGER) / 15) * 15)`
 	query := `
 		SELECT
-			strftime('%H', timestamp)  AS hour_of_day,
-			SUM(boardings)             AS total_boardings,
+			` + slot + ` AS hour_of_day,
+			SUM(boardings) AS total_boardings,
 			AVG(SUM(boardings)) OVER (
-				ORDER BY strftime('%H', timestamp)
+				ORDER BY ` + slot + `
 				ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING
 			) AS moving_avg
 		FROM passenger_events
@@ -106,16 +108,16 @@ func PeakDemand(db *sql.DB, operatorID, from, to string) ([]PeakDemandRow, error
 		args = append(args, operatorID)
 	}
 	if from != "" {
-		query += " AND timestamp >= ?"
+		query += " AND DATE(timestamp) >= ?"
 		args = append(args, from)
 	}
 	if to != "" {
-		query += " AND timestamp <= ?"
+		query += " AND DATE(timestamp) <= ?"
 		args = append(args, to)
 	}
 
 	query += `
-		GROUP BY strftime('%H', timestamp)
+		GROUP BY ` + slot + `
 		ORDER BY hour_of_day`
 
 	rows, err := db.Query(query, args...)

@@ -9,30 +9,40 @@ import (
 )
 
 // ListTrips returns trips with optional filtering by operatorID, date range, and routeID.
-func ListTrips(db *sql.DB, operatorID, from, to, routeID string) ([]domain.Trip, error) {
-	query := `SELECT id, vehicle_id, route_id, operator_id,
-		COALESCE(scheduled_start,''), COALESCE(actual_start,''), COALESCE(actual_end,''), status
-		FROM trips WHERE 1=1`
+// limit caps the result set (default 500). Results include route_code and vehicle_code.
+func ListTrips(db *sql.DB, operatorID, from, to, routeID string, limit int) ([]domain.Trip, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 500
+	}
+	query := `
+		SELECT t.id, t.vehicle_id, t.route_id, t.operator_id,
+			COALESCE(t.scheduled_start,''), COALESCE(t.actual_start,''), COALESCE(t.actual_end,''),
+			t.status,
+			COALESCE(r.code,''), COALESCE(v.internal_code,'')
+		FROM trips t
+		LEFT JOIN routes r   ON r.id = t.route_id
+		LEFT JOIN vehicles v ON v.id = t.vehicle_id
+		WHERE 1=1`
 	args := []interface{}{}
 
 	if operatorID != "" {
-		query += " AND operator_id = ?"
+		query += " AND t.operator_id = ?"
 		args = append(args, operatorID)
 	}
 	if from != "" {
-		query += " AND scheduled_start >= ?"
+		query += " AND t.scheduled_start >= ?"
 		args = append(args, from)
 	}
 	if to != "" {
-		query += " AND scheduled_start <= ?"
+		query += " AND t.scheduled_start <= ?"
 		args = append(args, to)
 	}
 	if routeID != "" {
-		query += " AND route_id = ?"
+		query += " AND t.route_id = ?"
 		args = append(args, routeID)
 	}
 
-	query += " ORDER BY scheduled_start DESC LIMIT 500"
+	query += fmt.Sprintf(" ORDER BY t.scheduled_start DESC LIMIT %d", limit)
 
 	rows, err := db.Query(query, args...)
 	if err != nil {
@@ -43,8 +53,11 @@ func ListTrips(db *sql.DB, operatorID, from, to, routeID string) ([]domain.Trip,
 	var trips []domain.Trip
 	for rows.Next() {
 		var t domain.Trip
-		if err := rows.Scan(&t.ID, &t.VehicleID, &t.RouteID, &t.OperatorID,
-			&t.ScheduledStart, &t.ActualStart, &t.ActualEnd, &t.Status); err != nil {
+		if err := rows.Scan(
+			&t.ID, &t.VehicleID, &t.RouteID, &t.OperatorID,
+			&t.ScheduledStart, &t.ActualStart, &t.ActualEnd, &t.Status,
+			&t.RouteCode, &t.VehicleCode,
+		); err != nil {
 			return nil, err
 		}
 		trips = append(trips, t)

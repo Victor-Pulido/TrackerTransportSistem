@@ -75,6 +75,19 @@ func (h *AnalyticsHandler) Efficiency(c *gin.Context) {
 	c.JSON(http.StatusOK, rows)
 }
 
+// DashboardSummary returns all KPI values for the dashboard overview.
+// GET /api/v1/analytics/dashboard-summary
+func (h *AnalyticsHandler) DashboardSummary(c *gin.Context) {
+	operatorID := auth.GetOperatorID(c)
+
+	row, err := h.Svc.GetDashboardSummary(operatorID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, row)
+}
+
 // OccupancyRate returns peak occupancy per trip.
 // GET /api/v1/analytics/occupancy-rate
 func (h *AnalyticsHandler) OccupancyRate(c *gin.Context) {

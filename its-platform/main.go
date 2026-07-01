@@ -119,8 +119,24 @@ func main() {
 		ingest.POST("/position", ingestH.IngestPosition)
 	}
 
+	// requireValidOperator ensures the operator_id in the JWT still exists in the DB.
+	// Guards against stale tokens after a database reseed.
+	requireValidOperator := func(c *gin.Context) {
+		opID := auth.GetOperatorID(c)
+		if opID == "" {
+			c.Next()
+			return
+		}
+		var count int
+		if err := db.QueryRow("SELECT COUNT(*) FROM operators WHERE id=? AND active=1", opID).Scan(&count); err != nil || count == 0 {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "operator not found — please sign in again"})
+			return
+		}
+		c.Next()
+	}
+
 	// API v1 — JWT + tenant filter
-	api := r.Group("/api/v1", auth.RequireAuth(), auth.TenantFilter())
+	api := r.Group("/api/v1", auth.RequireAuth(), auth.TenantFilter(), requireValidOperator)
 	{
 		// Operators — superadmin only for POST
 		api.GET("/operators", operatorH.List)
@@ -145,6 +161,7 @@ func main() {
 		// Analytics
 		analytics := api.Group("/analytics")
 		{
+			analytics.GET("/dashboard-summary", analyticsH.DashboardSummary)
 			analytics.GET("/load-profile", analyticsH.LoadProfile)
 			analytics.GET("/peak-demand", analyticsH.PeakDemand)
 			analytics.GET("/efficiency", analyticsH.Efficiency)
