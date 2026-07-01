@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Users,
@@ -10,7 +11,7 @@ import {
 } from 'lucide-react'
 import client from '../api/client'
 import KpiCard from '../components/ui/KpiCard'
-import PeakDemandChart from '../components/charts/PeakDemandChart'
+import PeakDemandChart, { usePeakStats } from '../components/charts/PeakDemandChart'
 import StatusBadge from '../components/ui/StatusBadge'
 
 // ── Fetchers ──────────────────────────────────────────────────────────────
@@ -211,6 +212,8 @@ export default function Dashboard() {
     refetchInterval: 60_000,
   })
 
+  const peakStats = usePeakStats(peakData)
+
   const s = summary ?? {}
 
   const hasWarning = !loadingSummary && (s.active_infractions ?? 0) > 0
@@ -349,19 +352,84 @@ export default function Dashboard() {
 
         {/* Hourly demand chart — 2/3 */}
         <div className="xl:col-span-2">
-          <Panel>
-            <PanelHeader
-              title="Hourly Demand"
-              sub="Total boardings by hour · last 7 days"
-            />
-            <div style={{ padding: '16px 18px 18px' }}>
-              {loadingPeak ? (
-                <div className="skeleton" style={{ height: 220, borderRadius: 6 }} />
-              ) : (
-                <PeakDemandChart data={peakData} />
+          <div style={{
+            backgroundColor: '#0B0F1A',
+            border:          '1px solid rgba(255,255,255,0.07)',
+            borderRadius:    12,
+            padding:         '20px 22px 22px',
+          }}>
+            {/* Card header */}
+            <div style={{
+              display:        'flex',
+              alignItems:     'flex-start',
+              justifyContent: 'space-between',
+              marginBottom:   16,
+              gap:            12,
+            }}>
+              <div>
+                <h2 style={{
+                  margin:        0,
+                  fontSize:      16,
+                  fontWeight:    600,
+                  color:         'rgba(224,234,255,0.92)',
+                  fontFamily:    'Geist, sans-serif',
+                  letterSpacing: '-0.02em',
+                  lineHeight:    1.2,
+                }}>
+                  Hourly Demand
+                </h2>
+                <p style={{
+                  margin:     '4px 0 0',
+                  fontSize:   12,
+                  color:      'rgba(224,234,255,0.38)',
+                  fontFamily: 'Geist, sans-serif',
+                }}>
+                  Last 7 days · total boardings by hour
+                </p>
+              </div>
+
+              {/* Stat summary */}
+              {peakStats && (
+                <div style={{
+                  display:     'flex',
+                  gap:         18,
+                  flexShrink:  0,
+                  alignItems:  'flex-start',
+                }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 10, color: 'rgba(224,234,255,0.32)', fontFamily: 'Geist, sans-serif', marginBottom: 2, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                      Peak Hour
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#D9A441', fontFamily: 'Geist Mono, monospace' }}>
+                      {peakStats.peakLabel}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'rgba(224,234,255,0.40)', fontFamily: 'Geist Mono, monospace' }}>
+                      {peakStats.peak.total_boardings?.toLocaleString('pt-BR')} pax
+                    </div>
+                  </div>
+                  <div style={{ width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.07)', marginTop: 2 }} />
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 10, color: 'rgba(224,234,255,0.32)', fontFamily: 'Geist, sans-serif', marginBottom: 2, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                      Avg / Hour
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(224,234,255,0.75)', fontFamily: 'Geist Mono, monospace' }}>
+                      {peakStats.avg?.toLocaleString('pt-BR')}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'rgba(224,234,255,0.40)', fontFamily: 'Geist Mono, monospace' }}>
+                      passengers
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
-          </Panel>
+
+            {/* Chart */}
+            {loadingPeak ? (
+              <div className="skeleton" style={{ height: 300, borderRadius: 6 }} />
+            ) : (
+              <PeakDemandChart data={peakData} height={280} />
+            )}
+          </div>
         </div>
 
         {/* Recent trips feed — 1/3 */}
